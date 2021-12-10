@@ -4,44 +4,55 @@ import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
 
-import me.alpha.Mario;
-
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.glfw.Callbacks.glfwFreeCallbacks;
 
 public class Window {
 
   private Integer WIDTH, HEIGHT;
   private String TITLE;
-  private Long glfwWindow;
+  private Long GLFW_WINDOW;
+  private Float R, G, B, A;
+  private Boolean FADE_TO_BLACK = false;
 
-  private static Window WINDOW = null;
+  private static Window instance = null;
 
   private Window() {
     this.WIDTH = 1920;
     this.HEIGHT = 1080;
     this.TITLE = "Mario";
+    R = 1f;
+    G = 1f;
+    B = 1f;
+    A = 1f;
   }
 
   public static Window get() {
-    if(Window.WINDOW == null) {
-      Window.WINDOW = new Window();
+    if (Window.instance == null) {
+      Window.instance = new Window();
     }
 
-    return Window.WINDOW;
+    return Window.instance;
   }
 
   public void run() {
     System.out.println("Hello LWJGL " + Version.getVersion() + "!");
+
     init();
     loop();
+
+    glfwFreeCallbacks(GLFW_WINDOW);
+    glfwDestroyWindow(GLFW_WINDOW);
+    glfwTerminate();
+    glfwSetErrorCallback(null).free();
   }
 
   public void init() {
     GLFWErrorCallback.createPrint(System.err).set();
 
-    if(!glfwInit()) {
+    if (!glfwInit()) {
       throw new IllegalStateException("Failed to create the GLFW window");
     }
 
@@ -50,29 +61,45 @@ public class Window {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
-    glfwWindow = glfwCreateWindow(this.WIDTH, this.HEIGHT, this.TITLE, NULL, NULL);
+    GLFW_WINDOW = glfwCreateWindow(this.WIDTH, this.HEIGHT, this.TITLE, NULL, NULL);
 
-    if(glfwWindow == NULL) {
+    glfwSetCursorPosCallback(GLFW_WINDOW, MouseListener::mousePosCallback);
+    glfwSetMouseButtonCallback(GLFW_WINDOW, MouseListener::mouseButtonCallback);
+    glfwSetScrollCallback(GLFW_WINDOW, MouseListener::mouseScrollCallback);
+    glfwSetKeyCallback(GLFW_WINDOW, KeyListener::keyCallback);
+
+    if (GLFW_WINDOW == NULL) {
       throw new IllegalStateException("Failed to create the GLFW window");
     }
 
-    glfwMakeContextCurrent(glfwWindow);
+    glfwMakeContextCurrent(GLFW_WINDOW);
 
     glfwSwapInterval(1);
 
-    glfwShowWindow(glfwWindow);
+    glfwShowWindow(GLFW_WINDOW);
 
     GL.createCapabilities();
   }
 
   public void loop() {
-    while(glfwWindowShouldClose(glfwWindow)) {
+    while (glfwWindowShouldClose(GLFW_WINDOW)) {
       glfwPollEvents();
 
-      glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+      glClearColor(R, G, B, A);
       glClear(GL_COLOR_BUFFER_BIT);
 
-      glfwSwapBuffers(glfwWindow);
+      if (FADE_TO_BLACK) {
+        R = Math.max(R - 0.01f, 0);
+        G = Math.max(G - 0.01f, 0);
+        B = Math.max(B - 0.01f, 0);
+      }
+
+      if (KeyListener.isKeyPressed(GLFW_KEY_SPACE)) {
+        FADE_TO_BLACK = true;
+      }
+
+      glfwSwapBuffers(GLFW_WINDOW);
+
     }
   }
 
